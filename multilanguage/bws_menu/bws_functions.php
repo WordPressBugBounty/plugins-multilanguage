@@ -784,13 +784,16 @@ if ( ! function_exists( 'bws_admin_enqueue_scripts' ) ) {
 
 		$page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
 
-		wp_enqueue_style( 'bws-admin-css', bws_menu_url( 'css/general_style.css' ), array(), '2.4.2' );
+		wp_enqueue_style( 'bws-admin-css', bws_menu_url( 'css/general_style.css' ), array(), '2.4.4' );
 		wp_enqueue_script( 'bws-admin-scripts', bws_menu_url( 'js/general_script.js' ), array( 'jquery', 'jquery-ui-tooltip' ) );
 
 		$plugin_dir  = explode( '/', plugin_basename( __FILE__ ) )[0];
 		$plugin_file = array_keys( get_plugins( "/$plugin_dir" ) )[0];
 
 		$include_jquery_ui = false;
+		if ( empty( $bws_plugins ) ) {
+			require dirname( __FILE__ ) . '/product_list.php';
+		}
 		if ( ! empty( $bws_plugins ) ) {
 			$admin_page_free = $pagenow . '?page=' . str_replace( '-pro', '', $page );
 

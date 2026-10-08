@@ -6,7 +6,7 @@ Description: Translate WordPress website content to other languages manually. Cr
 Author: BestWebSoft
 Text Domain: multilanguage
 Domain Path: /languages
-Version: 1.5.2
+Version: 1.5.3
 Author URI: https://bestwebsoft.com/
 License: GPLv3 or later
  */
@@ -1974,146 +1974,149 @@ if ( ! function_exists( 'mltlngg_save_post' ) ) {
 	function mltlngg_save_post( $post_id ) {
 		global $wpdb, $mltlngg_options;
 
-		$current_posttype = get_post_type( $post_id );
-		$check_posttype   = ( 'post' === $current_posttype || 'page' === $current_posttype );
-		$check_posttype   = apply_filters( 'mltlngg_posttype_compability', $check_posttype, $current_posttype );
-		if ( $check_posttype ) {
-			if ( ( isset( $_POST['save'] ) || isset( $_POST['publish'] ) ) && isset( $_POST['mltlngg_active_language'] ) && check_admin_referer( 'mltlngg_translate_form', 'mltlngg_translate_form_field' ) ) {
-				$_SESSION['current_language'] = sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) );
+		if ( current_user_can( 'edit_posts' ) ) {
 
-				/* If autosave option is disabled save all changes */
-				if ( 'ajax' !== $mltlngg_options['save_mode'] ) {
-					/* Formation of a new array with the translation data from all hidden fields */
-					$mltlngg_translate_data = array();
-					foreach ( $_POST as $key => $value ) {
-						if ( preg_match( '/^(title|content|excerpt)[_]([a-z]{2,3}|[a-z]{2,3}[_][A-Z]{2,3})$/', $key, $matches ) ) { /* Search POST with Title or Content */
-							$mltlngg_translate_data[ $matches[2] ]['lang']        = $matches[2]; /* Language code */
-							$mltlngg_translate_data[ $matches[2] ][ $matches[1] ] = $value; /* Title or Content or Excerpt*/
-						}
-					}
-					/* Save the translation data from new array */
-					foreach ( $mltlngg_translate_data as $mltlngg_translate ) {
-						if ( sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) ) !== $mltlngg_translate['lang'] ) {
-							/* If active language tab same as default language do not save changes */
+			$current_posttype = get_post_type( $post_id );
+			$check_posttype   = ( 'post' === $current_posttype || 'page' === $current_posttype );
+			$check_posttype   = apply_filters( 'mltlngg_posttype_compability', $check_posttype, $current_posttype );
+			if ( $check_posttype ) {
+				if ( ( isset( $_POST['save'] ) || isset( $_POST['publish'] ) ) && isset( $_POST['mltlngg_active_language'] ) && check_admin_referer( 'mltlngg_translate_form', 'mltlngg_translate_form_field' ) ) {
+					$_SESSION['current_language'] = sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) );
 
-							/* Get translation data for current language from database */
-							$mltlngg_result = $wpdb->get_row(
-								$wpdb->prepare(
-									'SELECT *
-								 FROM `' . $wpdb->prefix . 'mltlngg_translate`
-								 WHERE `post_ID` = %d AND `language` = %s
-								',
-									$post_id,
-									$mltlngg_translate['lang']
-								),
-								ARRAY_A
-							);
-							$excerpt        = isset( $mltlngg_translate['excerpt'] ) ? $mltlngg_translate['excerpt'] : '';
-							if ( isset( $mltlngg_result['post_content'] ) && isset( $mltlngg_result['post_title'] ) ) { /* If translation is exist in database, update translation */
-								if ( $mltlngg_translate['content'] !== $mltlngg_result['post_content'] || $mltlngg_translate['title'] !== $mltlngg_result['post_title'] || $excerpt !== $mltlngg_result['post_excerpt'] ) {
-									$wpdb->update(
-										$wpdb->prefix . 'mltlngg_translate',
-										array(
-											'post_content' => sanitize_post_field( 'post_content', wp_unslash( $mltlngg_translate['content'] ), 0, 'db' ),
-											'post_title'   => sanitize_text_field( wp_unslash( $mltlngg_translate['title'] ) ),
-											'post_excerpt' => sanitize_text_field( wp_unslash( $excerpt ) ),
-										),
-										array(
-											'post_ID'  => $post_id,
-											'language' => $mltlngg_translate['lang'],
-										),
-										array( '%s', '%s', '%s' ),
-										array( '%d', '%s' )
-									);
-								}
-							} elseif ( '' !== $mltlngg_translate['content'] || '' !== $mltlngg_translate['title'] ) {
-								/* If translation is not exist in database, create translation */
-								$wpdb->insert(
-									$wpdb->prefix . 'mltlngg_translate',
-									array(
-										'post_ID'      => $post_id,
-										'post_content' => wp_encode_emoji( sanitize_post_field( 'post_content', wp_unslash( $mltlngg_translate['content'] ), 0, 'db' ) ),
-										'post_title'   => sanitize_text_field( wp_unslash( $mltlngg_translate['title'] ) ),
-										'post_excerpt' => sanitize_text_field( wp_unslash( $excerpt ) ),
-										'language'     => $mltlngg_translate['lang'],
-									),
-									array( '%d', '%s', '%s', '%s', '%s' )
-								);
+					/* If autosave option is disabled save all changes */
+					if ( 'ajax' !== $mltlngg_options['save_mode'] ) {
+						/* Formation of a new array with the translation data from all hidden fields */
+						$mltlngg_translate_data = array();
+						foreach ( $_POST as $key => $value ) {
+							if ( preg_match( '/^(title|content|excerpt)[_]([a-z]{2,3}|[a-z]{2,3}[_][A-Z]{2,3})$/', $key, $matches ) ) { /* Search POST with Title or Content */
+								$mltlngg_translate_data[ $matches[2] ]['lang']        = $matches[2]; /* Language code */
+								$mltlngg_translate_data[ $matches[2] ][ $matches[1] ] = $value; /* Title or Content or Excerpt*/
 							}
 						}
+						/* Save the translation data from new array */
+						foreach ( $mltlngg_translate_data as $mltlngg_translate ) {
+							if ( sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) ) !== $mltlngg_translate['lang'] ) {
+								/* If active language tab same as default language do not save changes */
+
+								/* Get translation data for current language from database */
+								$mltlngg_result = $wpdb->get_row(
+									$wpdb->prepare(
+										'SELECT *
+									 FROM `' . $wpdb->prefix . 'mltlngg_translate`
+									 WHERE `post_ID` = %d AND `language` = %s
+									',
+										$post_id,
+										$mltlngg_translate['lang']
+									),
+									ARRAY_A
+								);
+								$excerpt        = isset( $mltlngg_translate['excerpt'] ) ? $mltlngg_translate['excerpt'] : '';
+								if ( isset( $mltlngg_result['post_content'] ) && isset( $mltlngg_result['post_title'] ) ) { /* If translation is exist in database, update translation */
+									if ( $mltlngg_translate['content'] !== $mltlngg_result['post_content'] || $mltlngg_translate['title'] !== $mltlngg_result['post_title'] || $excerpt !== $mltlngg_result['post_excerpt'] ) {
+										$wpdb->update(
+											$wpdb->prefix . 'mltlngg_translate',
+											array(
+												'post_content' => sanitize_post_field( 'post_content', wp_unslash( $mltlngg_translate['content'] ), 0, 'db' ),
+												'post_title'   => sanitize_text_field( wp_unslash( $mltlngg_translate['title'] ) ),
+												'post_excerpt' => sanitize_text_field( wp_unslash( $excerpt ) ),
+											),
+											array(
+												'post_ID'  => $post_id,
+												'language' => $mltlngg_translate['lang'],
+											),
+											array( '%s', '%s', '%s' ),
+											array( '%d', '%s' )
+										);
+									}
+								} elseif ( '' !== $mltlngg_translate['content'] || '' !== $mltlngg_translate['title'] ) {
+									/* If translation is not exist in database, create translation */
+									$wpdb->insert(
+										$wpdb->prefix . 'mltlngg_translate',
+										array(
+											'post_ID'      => $post_id,
+											'post_content' => wp_encode_emoji( sanitize_post_field( 'post_content', wp_unslash( $mltlngg_translate['content'] ), 0, 'db' ) ),
+											'post_title'   => sanitize_text_field( wp_unslash( $mltlngg_translate['title'] ) ),
+											'post_excerpt' => sanitize_text_field( wp_unslash( $excerpt ) ),
+											'language'     => $mltlngg_translate['lang'],
+										),
+										array( '%d', '%s', '%s', '%s', '%s' )
+									);
+								}
+							}
+						}
+						do_action( 'mltlngg_off_ajax_save', $post_id );
 					}
-					do_action( 'mltlngg_off_ajax_save', $post_id );
-				}
-				/* Save the translation data from active language tab */
+					/* Save the translation data from active language tab */
 
-				/* Get translation data for current language from database */
-				$mltlngg_result = $wpdb->get_row(
-					$wpdb->prepare(
-						'SELECT *
-						 FROM `' . $wpdb->prefix . 'mltlngg_translate`
-						 WHERE `post_ID` = %d AND `language` = %s
-						',
-						$post_id,
-						sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) )
-					),
-					ARRAY_A
-				);
+					/* Get translation data for current language from database */
+					$mltlngg_result = $wpdb->get_row(
+						$wpdb->prepare(
+							'SELECT *
+							 FROM `' . $wpdb->prefix . 'mltlngg_translate`
+							 WHERE `post_ID` = %d AND `language` = %s
+							',
+							$post_id,
+							sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) )
+						),
+						ARRAY_A
+					);
 
-				$excerpt = isset( $_POST['excerpt'] ) ? sanitize_text_field( wp_unslash( $_POST['excerpt'] ) ) : '';
+					$excerpt = isset( $_POST['excerpt'] ) ? sanitize_text_field( wp_unslash( $_POST['excerpt'] ) ) : '';
 
-				if ( isset( $mltlngg_result['post_content'] ) && isset( $mltlngg_result['post_title'] ) ) { /* If translation is exist in database, update translation */
-					if ( ( isset( $_POST['content'] ) && $_POST['content'] !== $mltlngg_result['post_content'] ) || ( isset( $_POST['post_title'] ) && $_POST['post_title'] !== $mltlngg_result['post_title'] ) || $excerpt !== $mltlngg_result['post_excerpt'] ) {
-						$wpdb->update(
+					if ( isset( $mltlngg_result['post_content'] ) && isset( $mltlngg_result['post_title'] ) ) { /* If translation is exist in database, update translation */
+						if ( ( isset( $_POST['content'] ) && $_POST['content'] !== $mltlngg_result['post_content'] ) || ( isset( $_POST['post_title'] ) && $_POST['post_title'] !== $mltlngg_result['post_title'] ) || $excerpt !== $mltlngg_result['post_excerpt'] ) {
+							$wpdb->update(
+								$wpdb->prefix . 'mltlngg_translate',
+								array(
+									'post_content' => wp_encode_emoji( sanitize_post_field( 'post_content', wp_unslash( $_POST['content'] ), 0, 'db' ) ),
+									'post_title'   => sanitize_text_field( wp_unslash( $_POST['post_title'] ) ),
+									'post_excerpt' => $excerpt,
+								),
+								array(
+									'post_ID'  => $post_id,
+									'language' => sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) ),
+								),
+								array( '%s', '%s', '%s' ),
+								array( '%d', '%s' )
+							);
+						}
+					} else { /* If translation is not exist in database, create translation */
+						$wpdb->insert(
 							$wpdb->prefix . 'mltlngg_translate',
 							array(
+								'post_ID'      => $post_id,
 								'post_content' => wp_encode_emoji( sanitize_post_field( 'post_content', wp_unslash( $_POST['content'] ), 0, 'db' ) ),
 								'post_title'   => sanitize_text_field( wp_unslash( $_POST['post_title'] ) ),
-								'post_excerpt' => $excerpt,
+								'post_excerpt' => wp_specialchars_decode( $excerpt, ENT_COMPAT ),
+								'language'     => sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) ),
 							),
-							array(
-								'post_ID'  => $post_id,
-								'language' => sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) ),
-							),
-							array( '%s', '%s', '%s' ),
-							array( '%d', '%s' )
+							array( '%d', '%s', '%s', '%s', '%s' )
 						);
 					}
-				} else { /* If translation is not exist in database, create translation */
-					$wpdb->insert(
-						$wpdb->prefix . 'mltlngg_translate',
-						array(
-							'post_ID'      => $post_id,
-							'post_content' => wp_encode_emoji( sanitize_post_field( 'post_content', wp_unslash( $_POST['content'] ), 0, 'db' ) ),
-							'post_title'   => sanitize_text_field( wp_unslash( $_POST['post_title'] ) ),
-							'post_excerpt' => wp_specialchars_decode( $excerpt, ENT_COMPAT ),
-							'language'     => sanitize_text_field( wp_unslash( $_POST['mltlngg_active_language'] ) ),
-						),
-						array( '%d', '%s', '%s', '%s', '%s' )
-					);
-				}
 
-				/* Save Title & Content to original post */
-				if ( $mltlngg_options['default_language'] !== $_POST['mltlngg_active_language'] && isset( $_POST[ 'title_' . $mltlngg_options['default_language'] ] ) && isset( $_POST[ 'content_' . $mltlngg_options['default_language'] ] ) ) {
-					$default_excerpt = isset( $_POST[ 'excerpt_' . $mltlngg_options['default_language'] ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'excerpt_' . $mltlngg_options['default_language'] ] ) ) : '';
-					$post            = array(
-						'ID'           => $post_id,
-						'post_title'   => wp_specialchars_decode( sanitize_text_field( wp_unslash( $_POST[ 'title_' . $mltlngg_options['default_language'] ] ), ENT_COMPAT ) ),
-						'post_excerpt' => wp_specialchars_decode( $default_excerpt, ENT_COMPAT ),
-						'post_content' => wp_encode_emoji( wp_specialchars_decode( sanitize_post_field( 'post_content', wp_unslash( $_POST[ 'content_' . $mltlngg_options['default_language'] ] ), ENT_COMPAT ), 0, 'db' ) ),
-					);
-				} else {
-					$post = array(
-						'ID'           => $post_id,
-						'post_title'   => wp_specialchars_decode( sanitize_text_field( wp_unslash( $_POST['post_title'] ) ) ),
-						'post_excerpt' => wp_specialchars_decode( $excerpt, ENT_COMPAT ),
-						'post_content' => wp_encode_emoji( wp_specialchars_decode( sanitize_post_field( 'post_content', wp_unslash( $_POST['content'] ), 0, 'db' ), ENT_COMPAT ) ),
-					);
+					/* Save Title & Content to original post */
+					if ( $mltlngg_options['default_language'] !== $_POST['mltlngg_active_language'] && isset( $_POST[ 'title_' . $mltlngg_options['default_language'] ] ) && isset( $_POST[ 'content_' . $mltlngg_options['default_language'] ] ) ) {
+						$default_excerpt = isset( $_POST[ 'excerpt_' . $mltlngg_options['default_language'] ] ) ? sanitize_text_field( wp_unslash( $_POST[ 'excerpt_' . $mltlngg_options['default_language'] ] ) ) : '';
+						$post            = array(
+							'ID'           => $post_id,
+							'post_title'   => wp_specialchars_decode( sanitize_text_field( wp_unslash( $_POST[ 'title_' . $mltlngg_options['default_language'] ] ), ENT_COMPAT ) ),
+							'post_excerpt' => wp_specialchars_decode( $default_excerpt, ENT_COMPAT ),
+							'post_content' => wp_encode_emoji( wp_specialchars_decode( sanitize_post_field( 'post_content', wp_unslash( $_POST[ 'content_' . $mltlngg_options['default_language'] ] ), ENT_COMPAT ), 0, 'db' ) ),
+						);
+					} else {
+						$post = array(
+							'ID'           => $post_id,
+							'post_title'   => wp_specialchars_decode( sanitize_text_field( wp_unslash( $_POST['post_title'] ) ) ),
+							'post_excerpt' => wp_specialchars_decode( $excerpt, ENT_COMPAT ),
+							'post_content' => wp_encode_emoji( wp_specialchars_decode( sanitize_post_field( 'post_content', wp_unslash( $_POST['content'] ), 0, 'db' ), ENT_COMPAT ) ),
+						);
+					}
+					/* function for saving custom fields (default WP field) */
+					do_action( 'mltlngg_saving_custom_fields', $post_id );
+					remove_action( 'save_post', 'mltlngg_save_post' );
+					wp_update_post( $post );
+					add_action( 'save_post', 'mltlngg_save_post' );
 				}
-				/* function for saving custom fields (default WP field) */
-				do_action( 'mltlngg_saving_custom_fields', $post_id );
-				remove_action( 'save_post', 'mltlngg_save_post' );
-				wp_update_post( $post );
-				add_action( 'save_post', 'mltlngg_save_post' );
 			}
 		}
 	}
@@ -2130,7 +2133,7 @@ if ( ! function_exists( 'mltlngg_rest_after_insert_post' ) ) {
 	function mltlngg_rest_after_insert_post( $post, $request, $creating ) {
 		global $wpdb, $mltlngg_get_default_language;
 
-		if ( isset( $_COOKIE['mltlngg_language'] ) && $_COOKIE['mltlngg_language'] !== $mltlngg_get_default_language ) {
+		if ( current_user_can( 'edit_posts' ) && isset( $_COOKIE['mltlngg_language'] ) && $_COOKIE['mltlngg_language'] !== $mltlngg_get_default_language ) {
 
 			$default_language_data = $wpdb->get_row(
 				$wpdb->prepare(
@@ -2358,20 +2361,22 @@ if ( ! function_exists( 'mltlngg_new_terms_created' ) ) {
 	 */
 	function mltlngg_new_terms_created( $term_id ) {
 		global $wpdb, $mltlngg_enabled_languages;
-		$locale_name = get_locale();
-		foreach ( $mltlngg_enabled_languages as $one_language ) {
-			$cat_lang = 'mltlngg_translate_' . $one_language['locale'];
-			$cat_name = ( $one_language['locale'] === $locale_name ) ? sanitize_text_field( wp_unslash( $_POST['tag-name'] ) ) : sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) );
-			if ( isset( $cat_name ) && isset( $_POST[ $cat_lang ] ) && '' !== sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) ) ) { /* If translation is empty, do not create translation in database */
-				$wpdb->insert(
-					$wpdb->prefix . 'mltlngg_terms_translate',
-					array(
-						'term_ID'  => $term_id,
-						'name'     => $cat_name,
-						'language' => $one_language['locale'],
-					),
-					array( '%d', '%s', '%s' )
-				);
+		if ( current_user_can( 'edit_posts' ) ) {
+			$locale_name = get_locale();
+			foreach ( $mltlngg_enabled_languages as $one_language ) {
+				$cat_lang = 'mltlngg_translate_' . $one_language['locale'];
+				$cat_name = ( $one_language['locale'] === $locale_name ) ? sanitize_text_field( wp_unslash( $_POST['tag-name'] ) ) : sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) );
+				if ( isset( $cat_name ) && isset( $_POST[ $cat_lang ] ) && '' !== sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) ) ) { /* If translation is empty, do not create translation in database */
+					$wpdb->insert(
+						$wpdb->prefix . 'mltlngg_terms_translate',
+						array(
+							'term_ID'  => $term_id,
+							'name'     => $cat_name,
+							'language' => $one_language['locale'],
+						),
+						array( '%d', '%s', '%s' )
+					);
+				}
 			}
 		}
 	}
@@ -2452,61 +2457,64 @@ if ( ! function_exists( 'mltlngg_terms_update' ) ) {
 	 */
 	function mltlngg_terms_update() {
 		global $tag_ID, $wpdb, $mltlngg_enabled_languages;
-		$locale_name = get_locale();
-		if ( isset( $_POST['action'] ) && 'inline-save-tax' === sanitize_text_field( wp_unslash( $_POST['action'] ) ) ) {
-			$wpdb->update(
-				$wpdb->prefix . 'mltlngg_terms_translate',
-				array(
-					'name' => isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '',
-				),
-				array(
-					'term_ID'  => isset( $_POST['tax_ID'] ) ? absint( $_POST['tax_ID'] ) : '',
-					'language' => $locale_name,
-				),
-				array( '%s' ),
-				array( '%d', '%s' )
-			);
-		}
-		if ( check_admin_referer( 'mltlngg_translate_terms_form', 'mltlngg_translate_terms_form_field' ) ) {
-			foreach ( $mltlngg_enabled_languages as $one_language ) {
-				$cat_lang = 'mltlngg_translate_' . $one_language['locale'];
 
-				$mltlngg_result = $wpdb->get_row(
-					$wpdb->prepare(
-						'SELECT *
-					 FROM `' . $wpdb->prefix . 'mltlngg_terms_translate`
-					 WHERE `term_ID` = %d AND `language` = %s
-					',
-						$tag_ID,
-						$one_language['locale']
+		if ( current_user_can( 'edit_posts' ) ) {
+			$locale_name = get_locale();
+			if ( isset( $_POST['action'] ) && 'inline-save-tax' === sanitize_text_field( wp_unslash( $_POST['action'] ) ) ) {
+				$wpdb->update(
+					$wpdb->prefix . 'mltlngg_terms_translate',
+					array(
+						'name' => isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '',
 					),
-					ARRAY_A
-				); /* Get terms translations from database */
-				$cat_name       = ( $mltlngg_result['language'] === $locale_name ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) );
-				if ( isset( $mltlngg_result['name'] ) && ( ( sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) ) !== $mltlngg_result['name'] ) || ( $mltlngg_result['language'] === $locale_name ) ) ) { /* If translation is exist in database, update translation */
-					$wpdb->update(
-						$wpdb->prefix . 'mltlngg_terms_translate',
-						array(
-							'name' => $cat_name,
+					array(
+						'term_ID'  => isset( $_POST['tax_ID'] ) ? absint( $_POST['tax_ID'] ) : '',
+						'language' => $locale_name,
+					),
+					array( '%s' ),
+					array( '%d', '%s' )
+				);
+			}
+			if ( check_admin_referer( 'mltlngg_translate_terms_form', 'mltlngg_translate_terms_form_field' ) ) {
+				foreach ( $mltlngg_enabled_languages as $one_language ) {
+					$cat_lang = 'mltlngg_translate_' . $one_language['locale'];
+
+					$mltlngg_result = $wpdb->get_row(
+						$wpdb->prepare(
+							'SELECT *
+						 FROM `' . $wpdb->prefix . 'mltlngg_terms_translate`
+						 WHERE `term_ID` = %d AND `language` = %s
+						',
+							$tag_ID,
+							$one_language['locale']
 						),
-						array(
-							'term_ID'  => $tag_ID,
-							'language' => $one_language['locale'],
-						),
-						array( '%s' ),
-						array( '%d', '%s' )
-					);
-				} elseif ( ! isset( $mltlngg_result['name'] ) && '' !== sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) ) ) {
-					/* If translation is not exist in database, create translation */
-					$wpdb->insert(
-						$wpdb->prefix . 'mltlngg_terms_translate',
-						array(
-							'term_ID'  => $tag_ID,
-							'name'     => $cat_name,
-							'language' => $one_language['locale'],
-						),
-						array( '%d', '%s', '%s' )
-					);
+						ARRAY_A
+					); /* Get terms translations from database */
+					$cat_name       = ( $mltlngg_result['language'] === $locale_name ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) );
+					if ( isset( $mltlngg_result['name'] ) && ( ( sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) ) !== $mltlngg_result['name'] ) || ( $mltlngg_result['language'] === $locale_name ) ) ) { /* If translation is exist in database, update translation */
+						$wpdb->update(
+							$wpdb->prefix . 'mltlngg_terms_translate',
+							array(
+								'name' => $cat_name,
+							),
+							array(
+								'term_ID'  => $tag_ID,
+								'language' => $one_language['locale'],
+							),
+							array( '%s' ),
+							array( '%d', '%s' )
+						);
+					} elseif ( ! isset( $mltlngg_result['name'] ) && '' !== sanitize_text_field( wp_unslash( $_POST[ $cat_lang ] ) ) ) {
+						/* If translation is not exist in database, create translation */
+						$wpdb->insert(
+							$wpdb->prefix . 'mltlngg_terms_translate',
+							array(
+								'term_ID'  => $tag_ID,
+								'name'     => $cat_name,
+								'language' => $one_language['locale'],
+							),
+							array( '%d', '%s', '%s' )
+						);
+					}
 				}
 			}
 		}
@@ -2521,8 +2529,10 @@ if ( ! function_exists( 'mltlngg_delete_post' ) ) {
 	 */
 	function mltlngg_delete_post( $post_id ) {
 		global $wpdb;
-		$wpdb->query( $wpdb->prepare( 'DELETE FROM `' . $wpdb->prefix . 'mltlngg_translate` WHERE `post_ID` = %d', $post_id ) );
-		do_action( 'mltlngg_delete_data', $post_id );
+		if ( current_user_can( 'edit_posts' ) ) {
+			$wpdb->query( $wpdb->prepare( 'DELETE FROM `' . $wpdb->prefix . 'mltlngg_translate` WHERE `post_ID` = %d', $post_id ) );
+			do_action( 'mltlngg_delete_data', $post_id );
+		}
 	}
 }
 
@@ -2534,7 +2544,9 @@ if ( ! function_exists( 'mltlngg_delete_term' ) ) {
 	 */
 	function mltlngg_delete_term( $term ) {
 		global $wpdb;
-		$wpdb->query( $wpdb->prepare( 'DELETE FROM `' . $wpdb->prefix . 'mltlngg_terms_translate` WHERE `term_ID` = %d', $term ) );
+		if ( current_user_can( 'edit_posts' ) ) {
+			$wpdb->query( $wpdb->prepare( 'DELETE FROM `' . $wpdb->prefix . 'mltlngg_terms_translate` WHERE `term_ID` = %d', $term ) );
+		}
 	}
 }
 
